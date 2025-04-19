@@ -1,0 +1,85 @@
+"use client"
+
+import type React from "react"
+
+import { useEffect, useRef } from "react"
+import { Highlight, themes } from "prism-react-renderer"
+
+interface CodeEditorProps {
+  value: string
+  onChange: (value: string) => void
+  language: string
+  error: string | null
+}
+
+export default function CodeEditor({ value, onChange, language, error }: CodeEditorProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Handle tab key for indentation
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Tab") {
+      e.preventDefault()
+      const start = e.currentTarget.selectionStart
+      const end = e.currentTarget.selectionEnd
+
+      // Insert 4 spaces (Python standard)
+      const newValue = value.substring(0, start) + "    " + value.substring(end)
+      onChange(newValue)
+
+      // Move cursor position
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 4
+        }
+      }, 0)
+    }
+  }
+
+  // Adjust textarea height to match content
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto"
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
+    }
+  }, [value])
+
+  return (
+    <div className="relative rounded-md border border-slate-700 overflow-hidden">
+      <div className="relative">
+        <Highlight theme={themes.vsDark} code={value} language={language}>
+          {({ className, style, tokens, getLineProps, getTokenProps }) => (
+            <pre
+              className={`${className} p-4 overflow-auto min-h-[400px] max-h-[70vh] text-sm`}
+              style={{ ...style, backgroundColor: "transparent" }}
+            >
+              {tokens.map((line, i) => {
+                const lineProps = getLineProps({ line, key: i })
+                delete lineProps.key // Remove key from props to avoid spreading it
+                return (
+                  <div key={i} {...lineProps}>
+                    <span className="inline-block w-8 text-right mr-2 text-slate-500 select-none">{i + 1}</span>
+                    {line.map((token, j) => {
+                      const tokenProps = getTokenProps({ token, key: j })
+                      delete tokenProps.key // Remove key from props to avoid spreading it
+                      return <span key={j} {...tokenProps} />
+                    })}
+                  </div>
+                )
+              })}
+            </pre>
+          )}
+        </Highlight>
+
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="absolute top-0 left-0 w-full h-full p-4 pl-12 text-transparent bg-transparent caret-white resize-none outline-none font-mono text-sm"
+          spellCheck="false"
+          style={{ caretColor: "white" }}
+        />
+      </div>
+    </div>
+  )
+}
